@@ -1,6 +1,6 @@
 terraform {
   backend "remote" {
-    organization = "datapunks"
+    organization = "" # Enter the Terraform Cloud Organization here
     workspaces {
       name = "app-aws-circleci"
     }
