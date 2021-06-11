@@ -1,0 +1,31 @@
+{
+  "name": "nodejs-circleci",
+  "version": "0.0.1",
+  "description": "nodejs-circleci",
+  "main": "app.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/punkdata/nodejs-circleci.git"
+  },
+  "author": "Angel Rivera",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/punkdata/nodejs-circleci/issues"
+  },
+  "homepage": "https://github.com/punkdata/nodejs-circleci.git#readme",
+  "dependencies": {
+    "ejs": "^2.6.1",
+    "express": "^4.16.4",
+    "mocha": "^8.4.0",
+    "mocha-junit-reporter": "^2.0.0",
+    "mochawesome": "^6.2.2",
+    "request": "^2.88.0"
+  }
+}
