@@ -90,7 +90,7 @@ jobs:
 workflows:
   build:
     jobs:
-      - run-tests
+      - run_tests
       - scan_app
       - build_docker_image
       - deploy_aws_ecs:
