@@ -70,8 +70,9 @@ jobs:
       #     path: ./terraform/ecs
       #     var: "docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME},docker_img_tag=0.1.<< pipeline.number >>"
       - run:
-          name: Terraform Apply
+          name: Terraform apply
           command: |
+            terraform init
             terraform -chdir=./terraform/ecs apply \
               -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} \
               -var docker_img_tag=0.1.<< pipeline.number >> \
