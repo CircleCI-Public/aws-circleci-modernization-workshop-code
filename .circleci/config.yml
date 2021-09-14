@@ -77,7 +77,8 @@ jobs:
               -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} \
               -var docker_img_tag=0.1.<< pipeline.number >> \
               -auto-approve
-            export ENDPOINT="$(terraform output load_balancer_hostname)"
+            terraform -chdir=./terraform/ecs output load_balancer_hostname
+            export ENDPOINT="$(terraform -chdir=./terraform/ecs output load_balancer_hostname)"
             echo 'export ENDPOINT='${ENDPOINT}
             mkdir -p /tmp/ecs/
             echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/ecs-endpoint
