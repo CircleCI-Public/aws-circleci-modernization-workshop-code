@@ -66,14 +66,23 @@ jobs:
           path: ./terraform/ecs
       - terraform/plan:
           path: ./terraform/ecs
-          workspace: ""
       # - terraform/apply:
       #     path: ./terraform/ecs
       #     var: "docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME},docker_img_tag=0.1.<< pipeline.number >>"
       - run:
           name: Terraform Apply
           command: |
-           terraform -chdir=./terraform/ecs apply -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} -var docker_img_tag=0.1.<< pipeline.number >> --auto-approve
+            terraform -chdir=./terraform/ecs apply \
+              -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} \
+              -var docker_img_tag=0.1.<< pipeline.number >> \
+              -auto-approve
+            export ENDPOINT="$(terraform output Load-Balancer-HostName)"
+            mkdir -p /tmp/ecs/
+            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/ecs-endpoint
+      - persist_to_workspace:
+          root: /tmp/ecs/
+          paths:
+            - "*"      
       - run: sleep 60
   smoketest_deployment:
     machine:
@@ -82,11 +91,11 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /tmp/ecr/
+          at: /tmp/ecs/
       - run:
           name: Smoke Test App Runner Deployment
           command: |
-            source /tmp/ecr/ecr_envars
+            source /tmp/ecr/ecs-enpoint
             ./test/smoke_test $ENDPOINT    
   destroy_aws_ecs:
     machine:
