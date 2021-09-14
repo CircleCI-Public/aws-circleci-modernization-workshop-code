@@ -33,6 +33,19 @@ jobs:
       - snyk/scan:
           fail-on-issues: false
           monitor-on-build: false
+  build_docker_image:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    steps:
+      - checkout
+      - docker/check
+      - docker/build:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
+      - docker/push:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
   deploy_aws_ecs:
     machine:
       image: ubuntu-2004:202101-01
