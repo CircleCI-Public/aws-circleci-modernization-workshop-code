@@ -112,7 +112,7 @@ workflows:
             - build_docker_image          
       - smoketest_deployment:
           requires:
-            - create_deploy_app_runner
+            - deploy_aws_ecs
       - approve_destroy:
           type: approval
           requires:
