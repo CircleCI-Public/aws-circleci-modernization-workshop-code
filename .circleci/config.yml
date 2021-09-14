@@ -4,7 +4,7 @@ orbs:
   aws-cli: circleci/aws-cli@2.0.2
   node: circleci/node@4.2.0
   docker: circleci/docker@1.5.0
-  terraform: circleci/terraform@2.1.0  
+  terraform: circleci/terraform@3.0.0  
 jobs:
   run_tests:
     docker:
@@ -107,9 +107,10 @@ workflows:
       - run_tests
       - scan_app
       - build_docker_image
-      - deploy_aws_ecs:
-          requires:
-            - build_docker_image          
+      - deploy_aws_ecs
+      # - deploy_aws_ecs:
+      #     requires:
+      #       - build_docker_image          
       - smoketest_deployment:
           requires:
             - deploy_aws_ecs
