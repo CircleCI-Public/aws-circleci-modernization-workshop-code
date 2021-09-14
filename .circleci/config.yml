@@ -79,6 +79,7 @@ jobs:
             export ENDPOINT="$(terraform output Load-Balancer-HostName)"
             mkdir -p /tmp/ecs/
             echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/ecs-endpoint
+            cat /tmp/ecs/ecs-endpoint
       - persist_to_workspace:
           root: /tmp/ecs/
           paths:
