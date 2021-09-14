@@ -3,6 +3,7 @@ orbs:
   snyk: snyk/snyk@0.1.0
   aws-cli: circleci/aws-cli@2.0.2
   node: circleci/node@4.2.0
+  docker: circleci/docker@1.5.0
   terraform: circleci/terraform@2.0.0  
 jobs:
   run_tests:
