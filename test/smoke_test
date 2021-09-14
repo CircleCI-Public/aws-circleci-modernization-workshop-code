@@ -5,7 +5,7 @@
 TIME_OUT=60
 TIME_OUT_COUNT=0
 SMOKE_IP=$1
-SMOKE_URL="https://$SMOKE_IP"
+SMOKE_URL="http://$SMOKE_IP"
 
 while true
 do
