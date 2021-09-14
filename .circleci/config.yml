@@ -72,17 +72,14 @@ jobs:
       - run:
           name: Terraform apply
           command: |
-            terraform init
             terraform -chdir=./terraform/ecs apply \
               -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} \
               -var docker_img_tag=0.1.<< pipeline.number >> \
               -auto-approve
-            terraform -chdir=./terraform/ecs output load_balancer_hostname
             export ENDPOINT="$(terraform -chdir=./terraform/ecs output load_balancer_hostname)"
-            echo 'export ENDPOINT='${ENDPOINT}
             mkdir -p /tmp/ecs/
-            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/ecs-endpoint
-            cat /tmp/ecs/ecs-endpoint
+            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/endpoint
+            cat /tmp/ecs/endpoint
       - persist_to_workspace:
           root: /tmp/ecs/
           paths:
@@ -97,10 +94,11 @@ jobs:
       - attach_workspace:
           at: /tmp/ecs/
       - run:
-          name: Smoke Test App Runner Deployment
+          name: Smoke Test ECS Deployment
           command: |
-            source /tmp/ecs/ecs-endpoint
-            ./test/smoke_test $ENDPOINT    
+            cat /tmp/ecs/endpoint
+            source /tmp/ecs/endpoint
+            ./test/smoke_test $ENDPOINT
   destroy_aws_ecs:
     machine:
       image: ubuntu-2004:202101-01
