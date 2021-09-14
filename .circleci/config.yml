@@ -95,7 +95,7 @@ jobs:
       - run:
           name: Smoke Test App Runner Deployment
           command: |
-            source /tmp/ecr/ecs-endpoint
+            source /tmp/ecs/ecs-endpoint
             ./test/smoke_test $ENDPOINT    
   destroy_aws_ecs:
     machine:
