@@ -14,6 +14,7 @@ jobs:
       - node/install-packages:
           override-ci-command: npm install
           cache-path: ~/project/node_modules
+      - run: echo "Docker Image ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}"
       - run:
           name: Run Unit Tests
           command: |
@@ -39,7 +40,7 @@ jobs:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
     steps:
-      - checkout
+      - checkout  
       - docker/check
       - docker/build:
           image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
@@ -56,6 +57,7 @@ jobs:
       - run:
           name: Create .terraformrc file locally
           command: echo "credentials \"app.terraform.io\" {token = \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+      - run: echo "Docker Image ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}"
       - terraform/install:
           terraform_version: "1.0.2"
           arch: "arm64"
