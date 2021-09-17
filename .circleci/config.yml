@@ -56,7 +56,6 @@ jobs:
       - run:
           name: Create .terraformrc file locally
           command: echo "credentials \"app.terraform.io\" {token = \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
-      - run: echo "Docker Image ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}"
       - terraform/install:
           terraform_version: "1.0.2"
           arch: "arm64"
