@@ -4,7 +4,7 @@ orbs:
   aws-cli: circleci/aws-cli@2.0.2
   node: circleci/node@4.2.0
   docker: circleci/docker@1.5.0
-  terraform: circleci/terraform@2.0.0  
+  terraform: circleci/terraform@3.0.0
 jobs:
   run_tests:
     docker:
@@ -39,7 +39,7 @@ jobs:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
     steps:
-      - checkout
+      - checkout  
       - docker/check
       - docker/build:
           image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
@@ -64,10 +64,20 @@ jobs:
           path: ./terraform/ecs
       - terraform/plan:
           path: ./terraform/ecs
-          workspace: ""
-      - terraform/apply:
-          path: ./terraform/ecs
-          var: "docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME},docker_img_tag=0.1.<< pipeline.number >>"
+      - run:
+          name: Terraform apply
+          command: |
+            terraform -chdir=./terraform/ecs apply \
+              -var docker_img_name=${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME} \
+              -var docker_img_tag=0.1.<< pipeline.number >> \
+              -auto-approve
+            export ENDPOINT="$(terraform -chdir=./terraform/ecs output load_balancer_hostname)"
+            mkdir -p /tmp/ecs/
+            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/endpoint
+      - persist_to_workspace:
+          root: /tmp/ecs/
+          paths:
+            - "*"      
       - run: sleep 60
   smoketest_deployment:
     machine:
@@ -76,12 +86,12 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /tmp/ecr/
+          at: /tmp/ecs/
       - run:
-          name: Smoke Test App Runner Deployment
+          name: Smoke Test ECS Deployment
           command: |
-            source /tmp/ecr/ecr_envars
-            ./test/smoke_test $ENDPOINT    
+            source /tmp/ecs/endpoint
+            ./test/smoke_test $ENDPOINT
   destroy_aws_ecs:
     machine:
       image: ubuntu-2004:202101-01
@@ -112,7 +122,7 @@ workflows:
             - build_docker_image          
       - smoketest_deployment:
           requires:
-            - create_deploy_app_runner
+            - deploy_aws_ecs
       - approve_destroy:
           type: approval
           requires:
