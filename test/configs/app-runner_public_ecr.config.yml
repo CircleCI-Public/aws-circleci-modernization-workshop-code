@@ -5,9 +5,10 @@ orbs:
   node: circleci/node@4.2.0
   terraform: circleci/terraform@2.0.0  
 jobs:
-  run_tests:
-    docker:
-      - image: cimg/node:14.16.0
+  run-tests:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
     steps:
       - checkout
       - node/install-packages:
@@ -16,12 +17,24 @@ jobs:
       - run:
           name: Run Unit Tests
           command: |
-            ./node_modules/mocha/bin/mocha test/ --reporter mocha-junit-reporter --reporter-options mochaFile=./test/test-results.xml
             ./node_modules/mocha/bin/mocha test/ --reporter mochawesome --reporter-options reportDir=test-results,reportFilename=test-results
       - store_test_results:
-          path: test/
+          path: test-results
       - store_artifacts:
           path: test-results          
+  build_docker_image:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    steps:
+      - checkout
+      - docker/check
+      - docker/build:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
+      - docker/push:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
   scan_app:
     docker:
       - image: cimg/node:14.16.0

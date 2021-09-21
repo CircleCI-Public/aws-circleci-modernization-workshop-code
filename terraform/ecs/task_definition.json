@@ -1,0 +1,26 @@
+[
+  {
+    "memory": 3072,
+    "portMappings": [
+      {
+          "hostPort": 80,
+          "containerPort": 5000,
+          "protocol": "tcp"
+      }
+    ],
+    "essential": true,
+    "name": "app-arm",
+    "image": "${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}",
+    "environment": [],
+    "command": [],
+    "volumesFrom": [],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "awslogs-app-arm",
+        "awslogs-region": "us-east-1",
+        "awslogs-stream-prefix": "devrel-app-arm"
+      }
+    }
+  }
+]
