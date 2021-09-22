@@ -78,7 +78,7 @@ jobs:
           root: /tmp/ecs/
           paths:
             - "*"      
-      - run: sleep 60
+      - run: sleep 80
   smoketest_deployment:
     machine:
       image: ubuntu-2004:202101-01
