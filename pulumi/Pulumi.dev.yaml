@@ -1,0 +1,6 @@
+config:
+  aws:ami: ami-0c3dda3deab25a563
+  aws:ec2_type: t4g.medium
+  aws:iam_profile: ec2ECSRole
+  aws:key_pair: devrel-angel-rivera
+  aws:region: us-east-1
