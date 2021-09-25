@@ -3,6 +3,7 @@
 from os import name
 from typing import AsyncGenerator, List, Mapping, Protocol
 import base64
+import json
 import pulumi
 import pulumi_aws as aws
 
@@ -13,18 +14,64 @@ iam_profile=config.require("iam_profile")
 key_pair=config.require("key_pair")
 asg_min_size=int(config.require("asg_min"))
 asg_max_size=int(config.require("asg_max"))
-desired_capcity=int(config.require("ecs_desired_count"))
-user_data = open("user_data.sh", "rb").read()
-enc_user_data = base64.b64encode(user_data).decode("utf-8")
+asg_desired_count=int(config.require("asg_desired"))
+ecs_cluster_name=config.require("cluster_name")
+ecs_desired_capcity=int(config.require("ecs_desired_count"))
+docker_image_name=config.require("docker_image_name")
+docker_image_tag=config.require("docker_image_tag")
+aws_tags={"Name":"DevRel-Arm","Owner":"Angel Rivera","Team":"Dev Rel"}
 
+
+def generate_base64_user_data(cluster_name):
+    content = '''#!/bin/bash
+sudo yum -y update
+sudo amazon-linux-extras disable docker
+sudo amazon-linux-extras install -y ecs
+cat >/etc/ecs/ecs.config <<EOL
+ECS_CLUSTER={Cluster_Name}
+ECS_AVAILABLE_LOGGING_DRIVERS=["json-file","syslog","awslogs","fluentd"]
+ECS_LOGLEVEL=debug
+EOL
+systemctl enable --now --no-block ecs.service
+    '''.format(Cluster_Name=cluster_name).encode("utf-8")
+    base64_user_data = base64.b64encode(content).decode("utf-8")
+    return base64_user_data
+    
+enc_user_data=generate_base64_user_data(ecs_cluster_name)
+
+def generate_task_definition(image_name, tag):
+    content = json.dumps([{"memory": 3072,
+        "portMappings": [{
+            "hostPort": 80,
+            "containerPort": 5000,
+            "protocol": "tcp"
+        }],
+        "essential": True,
+        "name": "app-arm",
+        "image": docker_image_name+":"+docker_image_tag,
+        "environment": [],
+        "command": [],
+        "volumesFrom": [],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "awslogs-app-arm",
+                "awslogs-region": "us-east-1",
+                "awslogs-stream-prefix": "devrel-app-arm"
+            }
+        }
+        }])
+    return content
+
+json_ecs_task_def = generate_task_definition(docker_image_name,docker_image_tag)
 
 # Provion VPC and related networking elements
 
-aws_tags={"Name":"DevRel-Arm","Owner":"Angel Rivera","Team":"Dev Rel"}
-
-vpc_main = aws.ec2.Vpc("dev_rel_vpc", cidr_block="10.0.0.0/16",tags=aws_tags,
+vpc_main = aws.ec2.Vpc("dev_rel_vpc", 
+    cidr_block="10.0.0.0/16",
     enable_dns_hostnames=True,
-    enable_dns_support=True
+    enable_dns_support=True,
+    tags=aws_tags
 )
 
 aws_ig = aws.ec2.InternetGateway("dev_rel_ig", vpc_id=vpc_main.id,tags=aws_tags)
@@ -120,7 +167,10 @@ iam_role_attachment = aws.iam.RolePolicyAttachment("ecs_agent",
 
 iam_inst_profile = aws.iam.InstanceProfile("iam_inst_profile", role=ecs_iam_role.name)
 
-
+aws_cloud_watch_group = aws.cloudwatch.LogGroup("awslogs-app-arm",
+    name="awslogs-app-arm",
+    tags=aws_tags
+)
 
 alb_target_group = aws.alb.TargetGroup("alb_tg",
     name="app-arm",
@@ -149,13 +199,13 @@ aws_alb = aws.lb.LoadBalancer("alb_main",
     tags=aws_tags
 )
 
-aws_alb_listner = aws.lb.Listener("alb_listener",
-    load_balancer_arn=aws_alb.arn,
+aws_alb_listener = aws.lb.Listener("alb_listener",
+    load_balancer_arn=aws_alb.id,
     port=80,
     protocol="HTTP",
     default_actions=[aws.lb.ListenerDefaultActionArgs(
         type="forward",
-        target_group_arn=alb_target_group.arn
+        target_group_arn=alb_target_group.id
     )]
 )
 
@@ -183,7 +233,7 @@ aws_asg = aws.autoscaling.Group("aws-asg",
     name="app-arm",
     min_size=asg_min_size,
     max_size=asg_max_size,
-    desired_capacity=desired_capcity,
+    desired_capacity=asg_desired_count,
     launch_configuration=launch_config,
     target_group_arns=[alb_target_group.arn],
     vpc_zone_identifiers=[
@@ -196,3 +246,27 @@ aws_asg = aws.autoscaling.Group("aws-asg",
         "propagate_at_launch":True
     }]
 )
+
+ecs_task_def = aws.ecs.TaskDefinition(ecs_cluster_name,
+    family=ecs_cluster_name,
+    container_definitions=json_ecs_task_def,
+    tags=aws_tags
+)
+
+ecs_cluster = aws.ecs.Cluster(ecs_cluster_name,name=ecs_cluster_name)
+
+ecs_service = aws.ecs.Service("app-arm-service",
+    name=ecs_cluster_name,
+    cluster=ecs_cluster.id,
+    task_definition=ecs_task_def.arn,
+    desired_count=ecs_desired_capcity,
+    deployment_minimum_healthy_percent=50,
+    deployment_maximum_percent=100,
+    load_balancers=[aws.ecs.ServiceLoadBalancerArgs(
+        target_group_arn=alb_target_group.id,
+        container_name="app-arm",
+        container_port=5000
+    )]
+)
+
+pulumi.export("app_url", pulumi.Output.concat("http://",aws_alb.dns_name))
