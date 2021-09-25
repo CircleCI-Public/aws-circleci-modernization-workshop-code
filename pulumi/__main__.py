@@ -149,6 +149,16 @@ aws_alb = aws.lb.LoadBalancer("alb_main",
     tags=aws_tags
 )
 
+aws_alb_listner = aws.lb.Listener("alb_listener",
+    load_balancer_arn=aws_alb.arn,
+    port=80,
+    protocol="HTTP",
+    default_actions=[aws.lb.ListenerDefaultActionArgs(
+        type="forward",
+        target_group_arn=alb_target_group.arn
+    )]
+)
+
 launch_config = aws.ec2.LaunchConfiguration("asg_launch_config", 
     name_prefix="app-arm-asg-lc-",
     key_name=key_pair,
