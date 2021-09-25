@@ -19,6 +19,7 @@ ecs_cluster_name=config.require("cluster_name")
 ecs_desired_capcity=int(config.require("ecs_desired_count"))
 docker_image_name=config.require("docker_image_name")
 docker_image_tag=config.require("docker_image_tag")
+
 aws_tags={"Name":"DevRel-Arm","Owner":"Angel Rivera","Team":"Dev Rel"}
 
 
@@ -36,7 +37,7 @@ systemctl enable --now --no-block ecs.service
     '''.format(Cluster_Name=cluster_name).encode("utf-8")
     base64_user_data = base64.b64encode(content).decode("utf-8")
     return base64_user_data
-    
+
 enc_user_data=generate_base64_user_data(ecs_cluster_name)
 
 def generate_task_definition(image_name, tag):
@@ -146,7 +147,7 @@ aws_sg_80 = aws.ec2.SecurityGroup("app-arm-80", name_prefix="app-arm-80-", vpc_i
     )]
 )
 
-# Provision AWS Compute Resources
+# Provision AWS IAM Resources
 
 iam_pol_doc = aws.iam.get_policy_document(statements=[aws.iam.GetPolicyDocumentStatementArgs(
     actions=["sts:AssumeRole"],
@@ -167,6 +168,7 @@ iam_role_attachment = aws.iam.RolePolicyAttachment("ecs_agent",
 
 iam_inst_profile = aws.iam.InstanceProfile("iam_inst_profile", role=ecs_iam_role.name)
 
+# Provsion AWS Compute Resources
 aws_cloud_watch_group = aws.cloudwatch.LogGroup("awslogs-app-arm",
     name="awslogs-app-arm",
     tags=aws_tags
@@ -247,6 +249,7 @@ aws_asg = aws.autoscaling.Group("aws-asg",
     }]
 )
 
+#  Provision AWS ECS Resources
 ecs_task_def = aws.ecs.TaskDefinition(ecs_cluster_name,
     family=ecs_cluster_name,
     container_definitions=json_ecs_task_def,
@@ -269,4 +272,5 @@ ecs_service = aws.ecs.Service("app-arm-service",
     )]
 )
 
+# Output the Load Balancer DNS Host
 pulumi.export("app_url", pulumi.Output.concat("http://",aws_alb.dns_name))
