@@ -273,4 +273,4 @@ ecs_service = aws.ecs.Service("app-arm-service",
 )
 
 # Output the Load Balancer DNS Host
-pulumi.export("app_url", pulumi.Output(aws_alb.dns_name))
+pulumi.export("app_url", aws_alb.dns_name)
