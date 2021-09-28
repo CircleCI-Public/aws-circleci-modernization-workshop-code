@@ -93,6 +93,7 @@ jobs:
       - run:
           name: Configure Pulumi Stack
           command: |
+            cd ${HOME}/project/pulumi/ecs/
             pulumi stack select ecs
             pulumi config set aws:region "us-east-1"
             pulumi config set ecs:ami "ami-0c3dda3deab25a563"
