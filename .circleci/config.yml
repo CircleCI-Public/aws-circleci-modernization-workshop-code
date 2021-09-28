@@ -164,8 +164,7 @@ jobs:
             access-token: ${PULUMI_ACCESS_TOKEN}
         - run:
             name: Install Python Dependencies
-            command: |
-              pip install -r ${HOME}/project/pulumi/ecs
+            command: pip install -r ${HOME}/project/pulumi/ecs/requirements.txt
         - pulumi/destroy:
             stack: dev
             working_directory: ${HOME}/project/pulumi/ecs
