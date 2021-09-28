@@ -35,7 +35,7 @@ jobs:
       - snyk/scan:
           fail-on-issues: false
           monitor-on-build: false
-  build_docker_image:
+  build_arm_docker_image:
     machine:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
@@ -90,14 +90,14 @@ jobs:
       - run:
           name: Install Python Dependencies
           command: pip install -r ${HOME}/project/pulumi/ecs/requirements.txt
-      - pulumi/stack_init:
-          stack: ecs
-          working_directory: ${HOME}/project/pulumi/ecs/
+      # - pulumi/stack_init:
+      #     stack: dev
+      #     working_directory: ${HOME}/project/pulumi/ecs/
       - run:
           name: Configure Pulumi Stack
           command: |
             cd ${HOME}/project/pulumi/ecs/
-            pulumi stack select ecs
+            pulumi stack select dev
             pulumi config set aws:region "us-east-1"
             pulumi config set ecs:ami "ami-0c3dda3deab25a563"
             pulumi config set ecs:key_pair "devrel-angel-rivera"
@@ -111,11 +111,11 @@ jobs:
             pulumi config set ecs:docker_image_name ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}
             pulumi config set ecs:docker_image_tag 0.1.<< pipeline.number >>
       - pulumi/update:
-          stack: ecs
+          stack: dev
           working_directory: ${HOME}/project/pulumi/ecs
       - run:
           command: |
-            export ENDPOINT="$(pulumi stack --stack ecs --cwd ${HOME}/project/pulumi/ecs output app_url)"
+            export ENDPOINT="$(pulumi stack --stack dev --cwd ${HOME}/project/pulumi/ecs output app_url)"
             mkdir -p /tmp/ecs/
             echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/endpoint
       - persist_to_workspace:
@@ -167,17 +167,17 @@ jobs:
             command: |
               pip install -r ${HOME}/project/pulumi/ecs
         - pulumi/destroy:
-            stack: ecs
+            stack: dev
             working_directory: ${HOME}/project/pulumi/ecs
 workflows:
   build:
     jobs:
       - run_tests
       - scan_app
-      - build_docker_image
+      - build_arm_docker_image
       - pulumi_deploy_aws_ecs:
           requires:
-            - build_docker_image          
+            - build_arm_docker_image          
       - smoketest_deployment:
           requires:
             - pulumi_deploy_aws_ecs
