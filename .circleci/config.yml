@@ -176,7 +176,7 @@ workflows:
             - build_docker_image          
       - smoketest_deployment:
           requires:
-            - deploy_aws_ecs
+            - pulumi_deploy_aws_ecs
       - approve_destroy:
           type: approval
           requires:
