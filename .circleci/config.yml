@@ -182,5 +182,5 @@ workflows:
           requires:
             - smoketest_deployment
       - pulumi_destroy_aws_ecs:
-          requires:update
+          requires:
             - approve_destroy
