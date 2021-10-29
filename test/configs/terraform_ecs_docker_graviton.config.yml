@@ -5,7 +5,6 @@ orbs:
   node: circleci/node@4.2.0
   docker: circleci/docker@1.5.0
   terraform: circleci/terraform@3.0.0
-  pulumi: pulumi/pulumi@2.0.0
 jobs:
   run_tests:
     docker:
@@ -48,7 +47,7 @@ jobs:
       - docker/push:
           image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
           tag: 0.1.<< pipeline.number >>
-  deploy_aws_ecs:
+  terraform_deploy_aws_ecs:
     machine:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
@@ -79,46 +78,7 @@ jobs:
           root: /tmp/ecs/
           paths:
             - "*"      
-      - run: sleep 80
-  pulumi_deploy_aws_ecs:
-    docker:
-      - image: circleci/python:3.9
-    steps:
-      - checkout
-      - pulumi/login:
-          access-token: ${PULUMI_ACCESS_TOKEN}
-      - run:
-          name: Install Python Dependencies
-          command: pip install -r ${HOME}/project/pulumi/ecs
-      - run:
-          name: Configure Pulumi Stack
-          command: |
-            pulumi stack select ecs
-            pulumi config set aws:region "us-east-1"
-            pulumi config set ecs:ami "ami-0c3dda3deab25a563"
-            pulumi config set ecs:key_pair "devrel-angel-rivera"
-            pulumi config set ecs:ec2_type "t4g.medium"
-            pulumi config set ecs:iam_profile "ec2ECSRole"
-            pulumi config set ecs:asg_min 3
-            pulumi config set ecs:asg_max 5
-            pulumi config set ecs:asg_desired 3
-            pulumi config set ecs:cluster_name "app-arm"
-            pulumi config set ecs:ecs_desired_count 3
-            pulumi config set ecs:docker_image_name ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}
-            pulumi config set ecs:docker_image_tag 0.1.<< pipeline.number >>
-      - pulumi/update:
-          stack: ecs
-          working_directory: ${HOME}/project/pulumi/ecs
-      - run:
-          command: |
-            export ENDPOINT="$(pulumi stack --stack ecs --cwd ${HOME}/project/pulumi/ecs output app_url)"
-            mkdir -p /tmp/ecs/
-            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/endpoint
-      - persist_to_workspace:
-          root: /tmp/ecs/
-          paths:
-            - "*"      
-      - run: sleep 80            
+      - run: sleep 90  
   smoketest_deployment:
     machine:
       image: ubuntu-2004:202101-01
@@ -132,7 +92,7 @@ jobs:
           command: |
             source /tmp/ecs/endpoint
             ./test/smoke_test $ENDPOINT
-  destroy_aws_ecs:
+  terraform_destroy_aws_ecs:
     machine:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
@@ -151,36 +111,22 @@ jobs:
           path: ./terraform/ecs
       - terraform/destroy:
           path: ./terraform/ecs
-  pulumi_destroy_aws_ecs:
-      docker:
-        - image: circleci/python:3.9
-      steps:
-        - checkout
-        - pulumi/login:
-            access-token: ${PULUMI_ACCESS_TOKEN}
-        - run:
-            name: Install Python Dependencies
-            command: |
-              pip install -r ${HOME}/project/pulumi/ecs
-        - pulumi/destroy:
-            stack: ecs
-            working_directory: ${HOME}/project/pulumi/ecs
 workflows:
   build:
     jobs:
       - run_tests
       - scan_app
       - build_docker_image
-      - deploy_aws_ecs:
+      - terraform_deploy_aws_ecs:
           requires:
             - build_docker_image          
       - smoketest_deployment:
           requires:
-            - deploy_aws_ecs
+            - terraform_deploy_aws_ecs
       - approve_destroy:
           type: approval
           requires:
             - smoketest_deployment
-      - destroy_aws_ecs:
+      - terraform_destroy_aws_ecs:
           requires:update
             - approve_destroy
