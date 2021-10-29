@@ -78,7 +78,7 @@ jobs:
           root: /tmp/ecs/
           paths:
             - "*"      
-      - run: sleep 80
+      - run: sleep 90
   pulumi_deploy_aws_ecs:
     docker:
       - image: circleci/python:3.9
