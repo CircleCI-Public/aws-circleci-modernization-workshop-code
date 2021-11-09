@@ -21,8 +21,10 @@
   },
   "homepage": "https://github.com/punkdata/nodejs-circleci.git#readme",
   "dependencies": {
+    "dotenv": "^8.2.0",
     "ejs": "^2.6.1",
-    "express": "^4.16.4",
+    "express": "^4.17.1",
+    "launchdarkly-node-server-sdk": "^6.2.0",
     "mocha": "^8.4.0",
     "mocha-junit-reporter": "^2.0.0",
     "mochawesome": "^6.2.2",
