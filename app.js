@@ -26,7 +26,7 @@ let showFeature = false
         showFeature = sf
         app.get('/', function (req, res) {
             var message = "Welcome to CI/CD 101 using CircleCI & LaunchDarkly!";
-            var base_case = "Welcome to CI/CD 101 using CircleCI.";
+            var base_case = "Welcome to CI/CD 101 using CircleCI!";
             res.render("index", {message: showFeature ? message : base_case});
         });
   })
