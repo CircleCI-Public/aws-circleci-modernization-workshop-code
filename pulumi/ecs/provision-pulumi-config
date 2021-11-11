@@ -2,7 +2,7 @@
 
 pulumi config set aws:region "us-east-1"
 pulumi config set ecs:ami "ami-0c3dda3deab25a563"
-pulumi config set ecs:key_pair "devrel-angel-rivera"
+pulumi config set ecs:key_pair "ee-default-keypair"
 pulumi config set ecs:ec2_type "t4g.medium"
 pulumi config set ecs:iam_profile "ec2ECSRole"
 pulumi config set ecs:asg_min 3

@@ -1,0 +1,153 @@
+version: 2.1
+orbs:
+  snyk: snyk/snyk@0.1.0
+  aws-cli: circleci/aws-cli@2.0.2
+  node: circleci/node@4.2.0
+  docker: circleci/docker@1.5.0
+  pulumi: pulumi/pulumi@2.0.0
+jobs:
+  run_tests:
+    docker:
+      - image: cimg/node:14.16.0
+    steps:
+      - checkout
+      - node/install-packages:
+          override-ci-command: npm install
+          cache-path: ~/project/node_modules
+      - run:
+          name: Run Unit Tests
+          command: |
+            ./node_modules/mocha/bin/mocha test/ --reporter mocha-junit-reporter --reporter-options mochaFile=./test/test-results.xml
+            ./node_modules/mocha/bin/mocha test/ --reporter mochawesome --reporter-options reportDir=test-results,reportFilename=test-results
+      - store_test_results:
+          path: test/
+      - store_artifacts:
+          path: test-results          
+  scan_app:
+    docker:
+      - image: cimg/node:14.16.0
+    steps:
+      - checkout
+      - run:
+          name: Snyk Scan Application files 
+          command: npm install 
+      - snyk/scan:
+          fail-on-issues: false
+          monitor-on-build: false
+  build_arm_docker_image:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    steps:
+      - checkout  
+      - docker/check
+      - docker/build:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
+      - docker/push:
+          image: $DOCKER_LOGIN/$CIRCLE_PROJECT_REPONAME
+          tag: 0.1.<< pipeline.number >>
+  pulumi_deploy_aws_ecs:
+    docker:
+      - image: circleci/python:3.9
+    steps:
+      - checkout
+      - pulumi/login:
+          access-token: ${PULUMI_ACCESS_TOKEN}
+      - run:
+          name: Install Python Dependencies
+          command: pip install -r ${HOME}/project/pulumi/ecs/requirements.txt
+      - run:
+          name: Configure Pulumi Stack
+          command: |
+            cd ${HOME}/project/pulumi/ecs/
+            pulumi stack select dev
+            pulumi config set aws:region "us-east-1"
+            pulumi config set ecs:ami "ami-0c3dda3deab25a563"
+            pulumi config set ecs:key_pair "ee-default-keypair"
+            pulumi config set ecs:ec2_type "t4g.medium"
+            pulumi config set ecs:iam_profile "ec2ECSRole"
+            pulumi config set ecs:asg_min 3
+            pulumi config set ecs:asg_max 5
+            pulumi config set ecs:asg_desired 3
+            pulumi config set ecs:cluster_name "app-arm"
+            pulumi config set ecs:ecs_desired_count 3
+            pulumi config set ecs:docker_image_name ${DOCKER_LOGIN}/${CIRCLE_PROJECT_REPONAME}
+            pulumi config set ecs:docker_image_tag 0.1.<< pipeline.number >>
+      - pulumi/update:
+          stack: dev
+          working_directory: ${HOME}/project/pulumi/ecs
+      - run:
+          command: |
+            export ENDPOINT="$(pulumi stack --stack dev --cwd ${HOME}/project/pulumi/ecs output app_url)"
+            mkdir -p /tmp/ecs/
+            echo 'export ENDPOINT='${ENDPOINT} > /tmp/ecs/endpoint
+      - persist_to_workspace:
+          root: /tmp/ecs/
+          paths:
+            - "*"      
+      - run: sleep 90            
+  smoketest_deployment:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/ecs/
+      - run:
+          name: Smoke Test ECS Deployment
+          command: |
+            source /tmp/ecs/endpoint
+            ./test/smoke_test $ENDPOINT
+  destroy_aws_ecs:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    steps:
+      - checkout
+      - run:
+          name: Create .terraformrc file locally
+          command: echo "credentials \"app.terraform.io\" {token = \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
+      - terraform/install:
+          terraform_version: "1.0.2"
+          arch: "arm64"
+          os: "linux"
+      - terraform/init:
+          path: ./terraform/ecs
+      - terraform/plan:
+          path: ./terraform/ecs
+      - terraform/destroy:
+          path: ./terraform/ecs
+  pulumi_destroy_aws_ecs:
+      docker:
+        - image: circleci/python:3.9
+      steps:
+        - checkout
+        - pulumi/login:
+            access-token: ${PULUMI_ACCESS_TOKEN}
+        - run:
+            name: Install Python Dependencies
+            command: pip install -r ${HOME}/project/pulumi/ecs/requirements.txt
+        - pulumi/destroy:
+            stack: dev
+            working_directory: ${HOME}/project/pulumi/ecs
+workflows:
+  build:
+    jobs:
+      - run_tests
+      - scan_app
+      - build_arm_docker_image
+      - pulumi_deploy_aws_ecs:
+          requires:
+            - build_arm_docker_image          
+      - smoketest_deployment:
+          requires:
+            - pulumi_deploy_aws_ecs
+      - approve_destroy:
+          type: approval
+          requires:
+            - smoketest_deployment
+      - pulumi_destroy_aws_ecs:
+          requires:
+            - approve_destroy
