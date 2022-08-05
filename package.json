@@ -22,7 +22,7 @@
   "homepage": "https://github.com/punkdata/nodejs-circleci.git#readme",
   "dependencies": {
     "ejs": "^2.6.1",
-    "express": "^4.16.4",
+    "express": "^4.17.2",
     "mocha": "^8.4.0",
     "mocha-junit-reporter": "^2.0.0",
     "mochawesome": "^6.2.2",
